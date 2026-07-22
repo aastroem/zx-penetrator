@@ -3,6 +3,7 @@ import { Screen } from './gl';
 import { attachKeyboard } from './input';
 import { Beeper } from './audio';
 import { edgesToSamples } from './audio-math';
+import { Slots, attachHotkeys } from './state';
 
 const T_STATES_PER_SEC = 3_500_000;
 const FRAME_TSTATES = 69888; // Spectrum: T-states per 50Hz frame
@@ -17,6 +18,16 @@ const scr = new Screen(document.getElementById('screen') as HTMLCanvasElement);
 attachKeyboard(emu);
 addEventListener('resize', () => scr.resize());
 scr.resize();
+
+// --- Save states + landscape editor persistence ---------------------------
+// F5/F8 = save/load slot 0 (see attachHotkeys). Slot buttons (1/2) and any
+// "resume autosave?" affordance are Task 9's UI; here we only wire the
+// mechanism. autoSaveOnUnload() intentionally never auto-restores on boot
+// (see its doc comment in state.ts) — a stale run should never resume
+// without the player asking for it.
+const slots = new Slots(emu);
+attachHotkeys(slots);
+slots.autoSaveOnUnload();
 
 // --- Audio bring-up -------------------------------------------------------
 // Browsers require a user gesture before audio can play, so the
@@ -54,6 +65,11 @@ addEventListener('pointerdown', startAudio, { once: true });
 // must be called every tick regardless of whether audio is playing yet, or
 // the core's fixed-size speaker-edge ring can overflow.
 function step(owedTstates: number): void {
+  // Polled on every tick path (rAF fallback and audio-clock scheduling
+  // alike) so a tape-save/load trap is never missed regardless of which
+  // loop is currently driving the emulator, even on ticks that run 0
+  // T-states.
+  slots.pollTraps();
   const owed = Math.round(owedTstates);
   if (owed > 0) {
     const ran = emu.run(owed);

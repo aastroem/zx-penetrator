@@ -30,12 +30,27 @@ export class Emu {
   // (4 bytes, little-endian) into each of these addresses.
   private readonly audioTsSlot: number;
   private readonly audioLvSlot: number;
+  // Save-state scratch buffer, malloc'd lazily on first use and reused
+  // forever after (see stateBuf() below) — there is no wasm `free` export,
+  // so a fresh malloc per stateSave()/stateLoad() call would leak the wasm
+  // heap unboundedly once the UI starts calling these repeatedly (every F5,
+  // every autosave). pen_state_size() is a compile-time constant, so one
+  // buffer of that size safely serves both directions: save and load are
+  // never concurrent (this is a single-threaded, single-instance wrapper).
+  private stateBufPtr: number | null = null;
 
   private constructor(e: PenExports) {
     this.e = e;
     this.screenView = new Uint8Array(e.memory.buffer, e.pen_screen(), SCREEN_BYTES);
     this.audioTsSlot = e.malloc(4);
     this.audioLvSlot = e.malloc(4);
+  }
+
+  private stateBuf(): number {
+    if (this.stateBufPtr === null) {
+      this.stateBufPtr = this.e.malloc(this.e.pen_state_size());
+    }
+    return this.stateBufPtr;
   }
 
   static async create(): Promise<Emu> {
@@ -107,13 +122,15 @@ export class Emu {
 
   stateSave(): Uint8Array {
     const size = this.e.pen_state_size();
-    const ptr = this.e.malloc(size);
+    const ptr = this.stateBuf();
     this.e.pen_state_save(ptr);
+    // .slice() copies out of wasm memory: the shared buffer is about to be
+    // reused by the next stateSave()/stateLoad() call.
     return new Uint8Array(this.e.memory.buffer, ptr, size).slice();
   }
 
   stateLoad(b: Uint8Array): boolean {
-    const ptr = this.e.malloc(b.length);
+    const ptr = this.stateBuf();
     new Uint8Array(this.e.memory.buffer, ptr, b.length).set(b);
     return this.e.pen_state_load(ptr) !== 0;
   }

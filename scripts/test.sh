@@ -19,3 +19,4 @@ fi
 
 node test/shell-smoke.mjs
 node test/audio-smoke.mjs
+node test/state-smoke.mjs
