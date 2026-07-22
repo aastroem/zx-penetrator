@@ -3,3 +3,4 @@ dist/
 core/build/
 web/public/pen.wasm
 test/out/
+.DS_Store
