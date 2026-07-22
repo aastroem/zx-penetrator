@@ -4,57 +4,17 @@
 
 import { linearize } from './interleave';
 
-// Web-presentation credit, composited into the bottom border strip of the
-// emulated picture itself (never into the 256x192 active screen, so it can
-// never touch the original game's graphics or collide with its HUD) —
-// baked into the same canvas the Spectrum picture renders to, not a DOM
-// element floating on top of it. Rendered once at startup via an offscreen
-// 2D canvas (plain text is far simpler and more legible than hand-rolling a
-// pixel font) into an RGBA texture sampled by the fragment shader; its
-// opacity is driven every frame by `setCreditAlpha`, which main.ts fades
-// from 1 to 0 over ~1s starting on the player's first keydown/pointerdown.
-const CREDIT_TEXT = 'A KIM & KENNY SHOW PRODUCTION - 2026';
-const CREDIT_W = 256; // matches the active screen width, for 1:1 x mapping
-const CREDIT_H = 16;  // fits well inside the 48px border strip
-
-function buildCreditTexture(gl: WebGL2RenderingContext): WebGLTexture {
-  const off = document.createElement('canvas');
-  off.width = CREDIT_W;
-  off.height = CREDIT_H;
-  const ctx = off.getContext('2d');
-  if (ctx) {
-    ctx.clearRect(0, 0, CREDIT_W, CREDIT_H);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '8px ui-monospace, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(CREDIT_TEXT, CREDIT_W / 2, CREDIT_H / 2 + 1);
-  }
-  const tex = gl.createTexture();
-  if (!tex) throw new Error('createTexture failed');
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, off);
-  return tex;
-}
-
 export class Screen {
   private readonly gl: WebGL2RenderingContext;
   private readonly canvas: HTMLCanvasElement;
   private readonly program: WebGLProgram;
   private readonly bitmapTex: WebGLTexture;
   private readonly attrsTex: WebGLTexture;
-  private readonly creditTex: WebGLTexture;
   private readonly uFrame: WebGLUniformLocation | null;
   private readonly uCrt: WebGLUniformLocation | null;
   private readonly uBorderColor: WebGLUniformLocation | null;
-  private readonly uCreditAlpha: WebGLUniformLocation | null;
   private readonly bitmapBuf = new Uint8Array(32 * 192);
   private crtOn = false;
-  private creditAlpha = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -67,15 +27,12 @@ export class Screen {
 
     this.bitmapTex = createIntTexture(gl, 32, 192);
     this.attrsTex = createIntTexture(gl, 32, 24);
-    this.creditTex = buildCreditTexture(gl);
 
     gl.uniform1i(gl.getUniformLocation(this.program, 'uBitmap'), 0);
     gl.uniform1i(gl.getUniformLocation(this.program, 'uAttrs'), 1);
-    gl.uniform1i(gl.getUniformLocation(this.program, 'uCredit'), 2);
     this.uFrame = gl.getUniformLocation(this.program, 'uFrame');
     this.uCrt = gl.getUniformLocation(this.program, 'uCrt');
     this.uBorderColor = gl.getUniformLocation(this.program, 'uBorderColor');
-    this.uCreditAlpha = gl.getUniformLocation(this.program, 'uCreditAlpha');
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
@@ -83,11 +40,6 @@ export class Screen {
 
   setCrt(on: boolean): void {
     this.crtOn = on;
-  }
-
-  /** 1 = fully visible, 0 = fully faded. Driven once per tick by main.ts. */
-  setCreditAlpha(alpha: number): void {
-    this.creditAlpha = alpha;
   }
 
   /** Sizes the canvas (integer-scaled 352x288) to fit the AVAILABLE box of
@@ -134,14 +86,10 @@ export class Screen {
       gl.RED_INTEGER, gl.UNSIGNED_BYTE, attrs,
     );
 
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, this.creditTex);
-
     gl.useProgram(this.program);
     gl.uniform1i(this.uFrame, frame | 0);
     gl.uniform1i(this.uCrt, this.crtOn ? 1 : 0);
     gl.uniform1i(this.uBorderColor, border & 7);
-    gl.uniform1f(this.uCreditAlpha, this.creditAlpha);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -206,16 +154,10 @@ const FRAGMENT_GLSL = `#version 300 es
 precision highp float; precision highp usampler2D;
 uniform usampler2D uBitmap;   // 32x192, R8UI, y already linearized
 uniform usampler2D uAttrs;    // 32x24,  R8UI
-uniform sampler2D uCredit;    // 256x16, RGBA text, composited into the border
 uniform int uFrame; uniform int uCrt; uniform int uBorderColor;
-uniform float uCreditAlpha;
 in vec2 vUv; out vec4 fragColor;
 const vec2 SCREEN = vec2(256.0, 192.0);
 const vec2 BORDER = vec2(48.0, 48.0);
-// Bottom-border-only placement (never overlaps the active 256x192 picture):
-// vertically centered in the 48px bottom border strip.
-const float CREDIT_H = 16.0;
-const float CREDIT_TOP = SCREEN.y + (BORDER.y - CREDIT_H) * 0.5;
 vec3 zxColor(uint c, uint bright) {
   float v = bright == 1u ? 1.0 : 0.843;
   return vec3(float((c >> 1u) & 1u), float((c >> 2u) & 1u), float(c & 1u)) * v;
@@ -236,11 +178,6 @@ void main() {
     uint bright = (attr >> 6u) & 1u;
     rgb = bit == 1u ? zxColor(attr & 7u, bright)
                     : zxColor((attr >> 3u) & 7u, bright);
-  }
-  if (uCreditAlpha > 0.0 && p.x >= 0.0 && p.x < SCREEN.x &&
-      p.y >= CREDIT_TOP && p.y < CREDIT_TOP + CREDIT_H) {
-    vec4 c = texture(uCredit, vec2(p.x / SCREEN.x, (p.y - CREDIT_TOP) / CREDIT_H));
-    rgb = mix(rgb, c.rgb, c.a * uCreditAlpha * 0.7);
   }
   if (uCrt == 1) {
     float scan = 0.82 + 0.18 * sin(p.y * 6.28318);

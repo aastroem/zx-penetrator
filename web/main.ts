@@ -5,6 +5,7 @@ import { Beeper } from './audio';
 import { edgesToSamples } from './audio-math';
 import { Slots, attachHotkeys } from './state';
 import { initUi, pollGamepad } from './ui';
+import { pokeCredit, CREDIT_START_FRAME, CREDIT_END_FRAME } from './credit';
 
 const T_STATES_PER_SEC = 3_500_000;
 const FRAME_TSTATES = 69888; // Spectrum: T-states per 50Hz frame
@@ -100,19 +101,17 @@ async function main(): Promise<void> {
   // audio-math.ts for why this can't be derived tick-locally.
   let speakerLevel: 0 | 1 = 0;
 
-  // "A Kim & Kenny Show production" credit, rendered by gl.ts into the
-  // emulated picture's own bottom border strip (see gl.ts's buildCreditTexture
-  // for why: it's baked into the same canvas the Spectrum picture draws to,
-  // never touching the game's own 256x192 graphics). Visible from load
-  // through the title/press-any-key phase; starts fading on the same first
-  // gesture that starts audio, over CREDIT_FADE_MS, driven every tick by
-  // wall-clock time (not the emulator's own frame counter, so it can't be
-  // slowed/sped by the catch-up clamp above).
-  const CREDIT_FADE_MS = 1000;
-  let creditFadeStart: number | null = null; // performance.now() at first gesture
+  // "A Kim & Kenny Show production" credit (see credit.ts): baked straight
+  // into the emulated screen's own memory, timed off the emulator's own
+  // frame counter relative to the same first-gesture moment that starts
+  // audio below (used here as a proxy for "the player just left the title
+  // screen" — same heuristic, same gesture). credit.ts's frame window was
+  // verified empirically against the real game's own screen writes.
+  let creditFrame0: number | null = null; // emu.frame() at first gesture
+  let creditPoked = false; // poke once per boot, on entering the window
 
   function startAudio(): void {
-    if (creditFadeStart === null) creditFadeStart = performance.now();
+    if (creditFrame0 === null) creditFrame0 = emu.frame();
     if (audioCtx) return; // already starting/started
     const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
     audioCtx = ctx;
@@ -151,10 +150,16 @@ async function main(): Promise<void> {
       if (beeper) beeper.push(samples);
       if (audioCtx) audioDone += ran;
     }
-    const creditAlpha = creditFadeStart === null
-      ? 1
-      : Math.max(0, 1 - (performance.now() - creditFadeStart) / CREDIT_FADE_MS);
-    scr.setCreditAlpha(creditAlpha);
+    // Poke the credit once we're inside its reveal window (see credit.ts) —
+    // a single poke suffices for the whole window, since the game itself
+    // never touches those screen rows again until well after it ends.
+    if (!creditPoked && creditFrame0 !== null) {
+      const elapsed = emu.frame() - creditFrame0;
+      if (elapsed >= CREDIT_START_FRAME && elapsed <= CREDIT_END_FRAME) {
+        pokeCredit(emu);
+        creditPoked = true;
+      }
+    }
     scr.draw(emu.screen(), emu.border(), emu.frame());
   }
 
