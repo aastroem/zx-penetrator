@@ -50,6 +50,9 @@ export const GAME_KEYS: Record<string, [number, number]> = buildGameKeys();
 
 export function attachKeyboard(emu: Emu): void {
   const h = (down: boolean) => (ev: KeyboardEvent) => {
+    // Never hijack browser shortcuts (Cmd+C, Ctrl+R, ...). Alt alone stays
+    // usable: AltLeft is the Spectrum's Symbol Shift.
+    if (ev.metaKey || ev.ctrlKey) return;
     const m = GAME_KEYS[ev.code];
     if (!m) return;
     ev.preventDefault();
