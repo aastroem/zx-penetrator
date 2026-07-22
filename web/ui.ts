@@ -62,26 +62,50 @@ function buildTopBar({ emu, scr, slots }: UiDeps): void {
   crtLabel.append(crtCheckbox, document.createTextNode(' CRT'));
   bar.append(crtLabel);
 
-  // --- Save/Load slot buttons (slots 0-2, shown as 1-3) -------------------
+  // --- Save/load slots (0-2, shown as 1-3) ---------------------------------
+  // One compact pill per slot (number + a save-icon button + a load-icon
+  // button) instead of six flat text buttons loose in the bar — same
+  // save(slot)/load(slot) calls, just grouped so three slots reads as one
+  // widget rather than a wall of buttons.
+  const slotGroup = document.createElement('div');
+  slotGroup.id = 'zxpen-slots';
+  slotGroup.title = 'Save / load game state';
   for (const slot of [0, 1, 2] as const) {
+    const cell = document.createElement('div');
+    cell.className = 'zxpen-slot';
+
+    const num = document.createElement('span');
+    num.className = 'zxpen-slot-num';
+    num.textContent = String(slot + 1);
+    num.setAttribute('aria-hidden', 'true');
+    cell.append(num);
+
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
-    saveBtn.textContent = `Save ${slot + 1}`;
+    saveBtn.textContent = '💾';
+    saveBtn.title = `Save to slot ${slot + 1}`;
+    saveBtn.setAttribute('aria-label', `Save to slot ${slot + 1}`);
     saveBtn.addEventListener('click', () => slots.save(slot));
 
     const loadBtn = document.createElement('button');
     loadBtn.type = 'button';
-    loadBtn.textContent = `Load ${slot + 1}`;
+    loadBtn.textContent = '📂';
+    loadBtn.title = `Load slot ${slot + 1}`;
+    loadBtn.setAttribute('aria-label', `Load slot ${slot + 1}`);
     loadBtn.addEventListener('click', () => slots.load(slot));
 
-    bar.append(saveBtn, loadBtn);
+    cell.append(saveBtn, loadBtn);
+    slotGroup.append(cell);
   }
+  bar.append(slotGroup);
 
   // --- Resume last session, only offered if a pagehide autosave exists ----
   if (slots.hasAutoSave()) {
     const resumeBtn = document.createElement('button');
     resumeBtn.type = 'button';
-    resumeBtn.textContent = 'Resume last session';
+    resumeBtn.id = 'zxpen-resume';
+    resumeBtn.textContent = '⟲ Resume';
+    resumeBtn.title = 'Resume last session (auto-saved on close)';
     resumeBtn.addEventListener('click', () => {
       slots.loadAuto();
     });
