@@ -1,6 +1,6 @@
 # zx-penetrator
 
-*A Kim & Kenny Show production*
+*A Kim & Kenny Show production, 2026*
 
 **[Play it in your browser →](https://aastroem.github.io/zx-penetrator/)**
 

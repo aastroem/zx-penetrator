@@ -100,18 +100,19 @@ async function main(): Promise<void> {
   // audio-math.ts for why this can't be derived tick-locally.
   let speakerLevel: 0 | 1 = 0;
 
-  // Web-presentation-only credit (index.html's #zxpen-credit; never baked
-  // into the emulated screen). Faded out on the same first user gesture that
-  // starts audio, then removed once the CSS transition finishes.
-  function fadeOutCredit(): void {
-    const el = document.getElementById('zxpen-credit');
-    if (!el) return; // already removed by an earlier gesture
-    el.classList.add('zxpen-credit-hide');
-    el.addEventListener('transitionend', () => el.remove(), { once: true });
-  }
+  // "A Kim & Kenny Show production" credit, rendered by gl.ts into the
+  // emulated picture's own bottom border strip (see gl.ts's buildCreditTexture
+  // for why: it's baked into the same canvas the Spectrum picture draws to,
+  // never touching the game's own 256x192 graphics). Visible from load
+  // through the title/press-any-key phase; starts fading on the same first
+  // gesture that starts audio, over CREDIT_FADE_MS, driven every tick by
+  // wall-clock time (not the emulator's own frame counter, so it can't be
+  // slowed/sped by the catch-up clamp above).
+  const CREDIT_FADE_MS = 1000;
+  let creditFadeStart: number | null = null; // performance.now() at first gesture
 
   function startAudio(): void {
-    fadeOutCredit();
+    if (creditFadeStart === null) creditFadeStart = performance.now();
     if (audioCtx) return; // already starting/started
     const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
     audioCtx = ctx;
@@ -150,6 +151,10 @@ async function main(): Promise<void> {
       if (beeper) beeper.push(samples);
       if (audioCtx) audioDone += ran;
     }
+    const creditAlpha = creditFadeStart === null
+      ? 1
+      : Math.max(0, 1 - (performance.now() - creditFadeStart) / CREDIT_FADE_MS);
+    scr.setCreditAlpha(creditAlpha);
     scr.draw(emu.screen(), emu.border(), emu.frame());
   }
 
