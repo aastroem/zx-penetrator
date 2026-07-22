@@ -136,7 +136,7 @@ const VERTEX_GLSL = `#version 300 es
 out vec2 vUv;
 void main() {
   vec2 pos = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
-  vUv = pos;
+  vUv = vec2(pos.x, 1.0 - pos.y);
   gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
 }
 `;
