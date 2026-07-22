@@ -1,0 +1,23 @@
+{
+  "name": "zx-penetrator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite web",
+    "build": "npm run build:core && vite build web",
+    "build:core": "bash scripts/build-core.sh",
+    "test": "bash scripts/test.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5"
+  }
+}
