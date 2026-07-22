@@ -22,15 +22,17 @@ int main(int argc, char **argv) {
         return 0;
     }
     if (argc >= 2 && !strcmp(argv[1], "statechk")) {
-        // Continuous reference: 150 frames, no save/load
-        pen_run_frames(150);
+        // Reference: 100 frames, then hold Space and run 50 more frames
+        pen_run_frames(100);
+        pen_key(7, 0, 1);  // Press Space (row 7, bit 0)
+        pen_run_frames(50);
         uint32_t ref_screen = pen_hash();
         // Full-memory hash to catch state divergence
         uint32_t ref_mem = 2166136261u;
         for (int i = 0x5B00; i < 0x10000; i++)
             ref_mem = (ref_mem ^ pen_peek((uint16_t)i)) * 16777619u;
 
-        // Reset and create diverging path
+        // Round-trip test: 100 frames, save, diverge 30, load, hold Space, run 50
         pen_boot();
         pen_run_frames(100);
 
@@ -50,7 +52,9 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        // Run 50 more frames (exercises restored inp/outp hooks; game polls IN $FE constantly)
+        // Hold Space post-load (pen_key writes into S.keys which is part of saved state)
+        pen_key(7, 0, 1);
+        // Run 50 more frames (exercises restored inp/outp hooks; game polls all rows at boot)
         pen_run_frames(50);
         uint32_t final_screen = pen_hash();
         // Full-memory hash to catch state divergence
