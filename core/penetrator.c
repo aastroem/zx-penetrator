@@ -10,6 +10,8 @@ USED void pen_boot(void) {
     spec_init(&S);
     memcpy(S.cpu.mem + 0x4000, title_scr, sizeof title_scr);
     memcpy(S.cpu.mem + 0x8000, game_bin, sizeof game_bin);
+    /* ROM charset at $3D00 — the game prints text via $3C00+ch*8 */
+    memcpy(S.cpu.mem + 0x3D00, zx48font, sizeof zx48font);
     S.cpu.pc = 0x8000;
 }
 

@@ -1,20 +1,113 @@
-{ "frames": 6000, "events": [
-  {"frame": 150,  "row": 7, "bit": 0, "down": true},
-  {"frame": 160,  "row": 7, "bit": 0, "down": false},
-  {"frame": 2600, "row": 3, "bit": 0, "down": true},
-  {"frame": 2610, "row": 3, "bit": 0, "down": false},
-  {"frame": 2700, "row": 2, "bit": 0, "down": true},
-  {"frame": 2760, "row": 2, "bit": 0, "down": false},
-  {"frame": 2800, "row": 7, "bit": 2, "down": true},
-  {"frame": 2810, "row": 7, "bit": 2, "down": false},
-  {"frame": 2900, "row": 1, "bit": 0, "down": true},
-  {"frame": 2960, "row": 1, "bit": 0, "down": false},
-  {"frame": 3000, "row": 7, "bit": 0, "down": true},
-  {"frame": 3010, "row": 7, "bit": 0, "down": false},
-  {"frame": 3100, "row": 5, "bit": 0, "down": true},
-  {"frame": 3160, "row": 5, "bit": 0, "down": false},
-  {"frame": 3300, "row": 2, "bit": 0, "down": true},
-  {"frame": 3340, "row": 2, "bit": 0, "down": false},
-  {"frame": 4000, "row": 7, "bit": 2, "down": true},
-  {"frame": 4010, "row": 7, "bit": 2, "down": false}
-]}
+{
+ "frames": 6000,
+ "events": [
+  {
+   "frame": 150,
+   "row": 7,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 160,
+   "row": 7,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 1600,
+   "row": 3,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 1610,
+   "row": 3,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 2100,
+   "row": 2,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 2160,
+   "row": 2,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 2250,
+   "row": 7,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 2260,
+   "row": 7,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 2350,
+   "row": 1,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 2410,
+   "row": 1,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 2500,
+   "row": 5,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 2560,
+   "row": 5,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 2700,
+   "row": 7,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 2710,
+   "row": 7,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 3000,
+   "row": 2,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 3060,
+   "row": 2,
+   "bit": 0,
+   "down": false
+  },
+  {
+   "frame": 4000,
+   "row": 7,
+   "bit": 0,
+   "down": true
+  },
+  {
+   "frame": 4010,
+   "row": 7,
+   "bit": 0,
+   "down": false
+  }
+ ]
+}
