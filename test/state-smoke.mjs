@@ -73,6 +73,27 @@ try {
     assert(exact, 'b64 roundtrip: byte-exact for 86128-byte random buffer');
   }
 
+  // --- (a1) b64 roundtrip for boundary buffer sizes -------------------------
+  {
+    const CHUNK_BYTES = 8193;
+    const sizesToTest = [0, CHUNK_BYTES, 2 * CHUNK_BYTES, CHUNK_BYTES - 1];
+    for (const size of sizesToTest) {
+      const bytes = new Uint8Array(size);
+      for (let i = 0; i < size; i++) bytes[i] = (i * 17 + 7) & 0xff;
+      const encoded = b64EncodeChunked(bytes);
+      const decoded = b64Decode(encoded);
+      assert(decoded.length === size, `b64 boundary: length ${size}`);
+      let exact = true;
+      for (let i = 0; i < size; i++) {
+        if (decoded[i] !== bytes[i]) {
+          exact = false;
+          break;
+        }
+      }
+      assert(exact, `b64 boundary: byte-exact for ${size}-byte buffer`);
+    }
+  }
+
   // --- Fake storage + stub emu shared by (b) and (c)/(d) ------------------
   function makeFakeStorage() {
     const m = new Map();
@@ -88,18 +109,23 @@ try {
     };
   }
 
-  function makeStubEmu(memSize) {
+  function makeStubEmu(memSize, expectedStateSize = null) {
     const mem = new Uint8Array(memSize);
     return {
       mem,
       savedBytes: null, // known bytes returned by stateSave()
       lastLoadedBytes: null, // records what stateLoad() was called with
       trapValue: 0,
+      expectedStateSize, // if set, stateLoad rejects wrong-size blobs
       stateSave() {
         return this.savedBytes;
       },
       stateLoad(bytes) {
         this.lastLoadedBytes = bytes;
+        // Reject wrong-size blobs like the real emu.ts does
+        if (this.expectedStateSize !== null && bytes.length !== this.expectedStateSize) {
+          return false;
+        }
         return true;
       },
       trap() {
@@ -143,6 +169,21 @@ try {
     // Empty slot -> load() returns false without touching the emu.
     const emptySlots = new Slots(emu, makeFakeStorage());
     assert(emptySlots.load(1) === false, 'load: empty slot returns false');
+
+    // Wrong-size blob -> Slots.load() returns false when emu.stateLoad() rejects it
+    const storage2 = makeFakeStorage();
+    const goodState = new Uint8Array(1234);
+    for (let i = 0; i < goodState.length; i++) goodState[i] = (i * 11 + 2) & 0xff;
+    const emuWithSizeCheck = makeStubEmu(0x10000, 1234); // expects 1234-byte state
+    emuWithSizeCheck.savedBytes = goodState;
+    const slots2 = new Slots(emuWithSizeCheck, storage2);
+    slots2.save(0);
+
+    // Store a wrong-size blob directly in storage
+    const wrongSizeState = new Uint8Array(999);
+    storage2.setItem('zxpen.state.0', b64EncodeChunked(wrongSizeState));
+    const resultWrongSize = slots2.load(0);
+    assert(resultWrongSize === false, 'load: wrong-size blob returns false from emu.stateLoad()');
   }
 
   // --- (c) trap 1 (tape save) copies 7376 bytes $D000..$ECCF into storage -

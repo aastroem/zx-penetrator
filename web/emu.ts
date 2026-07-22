@@ -130,6 +130,8 @@ export class Emu {
   }
 
   stateLoad(b: Uint8Array): boolean {
+    // Reject stale/foreign blobs from other builds before touching wasm memory.
+    if (b.length !== this.e.pen_state_size()) return false;
     const ptr = this.stateBuf();
     new Uint8Array(this.e.memory.buffer, ptr, b.length).set(b);
     return this.e.pen_state_load(ptr) !== 0;

@@ -68,7 +68,8 @@ function step(owedTstates: number): void {
   // Polled on every tick path (rAF fallback and audio-clock scheduling
   // alike) so a tape-save/load trap is never missed regardless of which
   // loop is currently driving the emulator, even on ticks that run 0
-  // T-states.
+  // T-states. Note: the core's trap latch holds one value; two tape ops
+  // within a single run window would coalesce (unreachable in the menu-driven UX).
   slots.pollTraps();
   const owed = Math.round(owedTstates);
   if (owed > 0) {
