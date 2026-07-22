@@ -1,11 +1,7 @@
 {
   "name": "zx-penetrator",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "Pixel-perfect Penetrator (ZX Spectrum, 1982) in the browser via a C→WASM emulator",
   "scripts": {
     "dev": "vite",
     "build": "npm run build:core && vite build",
@@ -14,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "typescript": "^7.0.2",

@@ -16,16 +16,20 @@ engineered into a rewrite — the machine just runs the original 1982 code.
 
 ## Controls
 
-| Action        | Keyboard         | Touch / Gamepad         |
-|---------------|------------------|--------------------------|
-| Climb         | `Q` / `↑`        | left cluster, up         |
-| Dive          | `A` / `↓`        | left cluster, down       |
-| Slower        | `O` / `←`        | left cluster, left       |
-| Faster        | `P` / `→`        | left cluster, right      |
-| Fire + bomb   | `Space` / `M`    | tap the fire button      |
-| Menu          | `1` / `2`        | —                        |
-| Quick save    | `F5` (slot 1)    | —                        |
-| Quick load    | `F8` (slot 1)    | —                        |
+| Action              | Keyboard         | Touch / Gamepad         |
+|---------------------|------------------|--------------------------|
+| Number of players   | `1` / `2`        | —                        |
+| Training center     | `T`              | —                        |
+| Landscape editor    | `E`              | —                        |
+| Load landscape      | `L`              | —                        |
+| Toggle sirens       | `S`              | —                        |
+| Climb               | `Q` / `↑`        | left cluster, up         |
+| Dive                | `A` / `↓`        | left cluster, down       |
+| Slower              | `O` / `←`        | left cluster, left       |
+| Faster              | `P` / `→`        | left cluster, right      |
+| Fire + bomb         | `Space` / `M`    | tap the fire button      |
+| Quick save          | `F5` (slot 1)    | —                        |
+| Quick load          | `F8` (slot 1)    | —                        |
 
 A touch control overlay appears automatically on coarse-pointer (mobile/
 tablet) devices, and any connected gamepad (d-pad or left stick, plus two
@@ -70,7 +74,8 @@ npm run build   # emcc core build + vite bundle -> dist/
 ```
 
 `npm run dev` runs a Vite dev server against a prebuilt wasm for
-day-to-day front-end work.
+day-to-day front-end work — run `npm run build:core` once first, since
+`pen.wasm` is gitignored and won't exist yet on a fresh checkout.
 
 ## Provenance
 
@@ -78,7 +83,9 @@ The Spectrum machine model and Z80 core were reverse engineered from the
 original Penetrator cassette image, cross-checked against an independent
 Python reference emulator built in a companion research repo
 ([c64-research](https://github.com/aastroem/c64-research), a broader
-8-bit reverse-engineering project). *Penetrator* is © 1982 Beam Software.
+8-bit reverse-engineering project). The synthetic ROM embeds the 768-byte
+48K ROM character set (chars 0x20-0x7F) required by the game's text
+renderer. *Penetrator* is © 1982 Beam Software.
 The original game binary is included in this repository as an
 abandonware-era title; if you are the rights holder and want it removed,
 please open an issue and it will be taken down promptly.

@@ -97,10 +97,12 @@ function buildTopBar({ emu, scr, slots }: UiDeps): void {
 
   const body = document.createElement('div');
   body.innerHTML =
-    '<p><b>Original Spectrum keys:</b> Q climb, A dive, O slower, P faster, ' +
-    'SPACE fire/bomb, ENTER/1/2 menu.</p>' +
-    '<p><b>Also mapped:</b> ↑ climb, ↓ dive, ← slower, → faster, SPACE fire/bomb.</p>' +
-    '<p><b>Quick save/load:</b> F5 saves slot 1, F8 loads slot 1.</p>';
+    '<p><b>Menu:</b> 1/2 number of players, T training center, E landscape ' +
+    'editor, L load landscape, S toggle sirens.</p>' +
+    '<p><b>Flight:</b> Q/↑ climb, A/↓ dive, O/← slower, P/→ faster, ' +
+    'SPACE/M fire+bomb.</p>' +
+    '<p><b>Quick save/load:</b> F5 saves slot 1, F8 loads slot 1.</p>' +
+    '<p>Any key during the demo returns to the menu.</p>';
   details.append(body);
   bar.append(details);
 
