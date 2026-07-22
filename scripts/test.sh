@@ -9,3 +9,10 @@ else
   diff test/out/timeline.hashes test/golden/timeline.hashes | head -3
   echo "first divergent frame above"; exit 1
 fi
+
+if command -v emcc >/dev/null 2>&1; then
+  npm run build:core
+  node test/wasm-smoke.mjs
+else
+  echo "emcc not found; skipping wasm smoke test"
+fi
