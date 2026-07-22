@@ -135,6 +135,25 @@ export class Slots {
     return this.emu.stateLoad(b64Decode(encoded));
   }
 
+  /** Whether a pagehide autosave blob exists, without loading it — lets the
+   * UI conditionally show a "Resume last session" button rather than
+   * unconditionally loading (and mutating) state just to check. */
+  hasAutoSave(): boolean {
+    return this.getItem(AUTO_KEY) !== null;
+  }
+
+  /** Loads the pagehide autosave blob ('zxpen.state.auto') into the
+   * emulator, if present. Returns false if there is no autosave or the
+   * emulator rejected the snapshot. Unlike autoSaveOnUnload() this is never
+   * called automatically — Task 9's UI calls it only when the player
+   * explicitly clicks "Resume last session" (see that method's doc comment
+   * for why silent auto-restore on boot is deliberately avoided). */
+  loadAuto(): boolean {
+    const encoded = this.getItem(AUTO_KEY);
+    if (encoded === null) return false;
+    return this.emu.stateLoad(b64Decode(encoded));
+  }
+
   /** Registers a 'pagehide' listener that snapshots the emulator to
    * 'zxpen.state.auto'. 'pagehide' is used rather than 'beforeunload'
    * because it fires reliably on mobile Safari/Chrome (bfcache eviction,

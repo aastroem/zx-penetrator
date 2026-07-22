@@ -1,0 +1,172 @@
+// Shell chrome: top bar (CRT toggle, save/load slots, resume-autosave, keys
+// help), a touch overlay for coarse-pointer devices, and per-tick gamepad
+// polling. Pure DOM wiring over pieces that already work on their own —
+// Screen.setCrt (gl.ts), Slots (state.ts), GAME_KEYS/emu.key (input.ts/
+// emu.ts) and gamepad-logic.ts's edge-detected pad-state mapping. No game
+// logic lives here.
+
+import type { Emu } from './emu';
+import type { Screen } from './gl';
+import type { Slots } from './state';
+import { GAME_KEYS } from './input';
+import { mapGamepadState } from './gamepad-logic';
+
+const CRT_KEY = 'zxpen.crt';
+
+// localStorage access with the same try/catch-and-degrade shape as
+// state.ts's Slots (private there, and CRT is a one-key, non-critical
+// preference, so a tiny local copy beats exporting Slots' internals).
+function storageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function storageSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // CRT preference just won't persist this session — not worth surfacing.
+  }
+}
+
+export interface UiDeps {
+  emu: Emu;
+  scr: Screen;
+  slots: Slots;
+}
+
+/** Builds and inserts all shell chrome into the current document. Call once
+ * at startup after emu/scr/slots exist. */
+export function initUi(deps: UiDeps): void {
+  buildTopBar(deps);
+  buildTouchOverlay(deps.emu);
+}
+
+function buildTopBar({ emu, scr, slots }: UiDeps): void {
+  const bar = document.createElement('div');
+  bar.id = 'zxpen-topbar';
+
+  // --- CRT toggle, persisted at 'zxpen.crt' -------------------------------
+  const crtLabel = document.createElement('label');
+  const crtCheckbox = document.createElement('input');
+  crtCheckbox.type = 'checkbox';
+  const crtOn = storageGet(CRT_KEY) === '1';
+  crtCheckbox.checked = crtOn;
+  scr.setCrt(crtOn);
+  crtCheckbox.addEventListener('change', () => {
+    scr.setCrt(crtCheckbox.checked);
+    storageSet(CRT_KEY, crtCheckbox.checked ? '1' : '0');
+  });
+  crtLabel.append(crtCheckbox, document.createTextNode(' CRT'));
+  bar.append(crtLabel);
+
+  // --- Save/Load slot buttons (slots 0-2, shown as 1-3) -------------------
+  for (const slot of [0, 1, 2] as const) {
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.textContent = `Save ${slot + 1}`;
+    saveBtn.addEventListener('click', () => slots.save(slot));
+
+    const loadBtn = document.createElement('button');
+    loadBtn.type = 'button';
+    loadBtn.textContent = `Load ${slot + 1}`;
+    loadBtn.addEventListener('click', () => slots.load(slot));
+
+    bar.append(saveBtn, loadBtn);
+  }
+
+  // --- Resume last session, only offered if a pagehide autosave exists ----
+  if (slots.hasAutoSave()) {
+    const resumeBtn = document.createElement('button');
+    resumeBtn.type = 'button';
+    resumeBtn.textContent = 'Resume last session';
+    resumeBtn.addEventListener('click', () => {
+      slots.loadAuto();
+    });
+    bar.append(resumeBtn);
+  }
+
+  // --- Collapsible keys help ----------------------------------------------
+  const details = document.createElement('details');
+  details.id = 'zxpen-keyshelp';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Keys';
+  details.append(summary);
+
+  const body = document.createElement('div');
+  body.innerHTML =
+    '<p><b>Original Spectrum keys:</b> Q climb, A dive, O slower, P faster, ' +
+    'SPACE fire/bomb, ENTER/1/2 menu.</p>' +
+    '<p><b>Also mapped:</b> ↑ climb, ↓ dive, ← slower, → faster, SPACE fire/bomb.</p>' +
+    '<p><b>Quick save/load:</b> F5 saves slot 1, F8 loads slot 1.</p>';
+  details.append(body);
+  bar.append(details);
+
+  document.body.append(bar);
+}
+
+// --- Touch overlay: only on coarse (touch) pointers -----------------------
+
+function buildTouchOverlay(emu: Emu): void {
+  if (!matchMedia('(pointer: coarse)').matches) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'zxpen-touch';
+
+  const dpad = document.createElement('div');
+  dpad.id = 'zxpen-dpad';
+  const up = makeTouchButton('▲', GAME_KEYS.ArrowUp, emu);
+  const down = makeTouchButton('▼', GAME_KEYS.ArrowDown, emu);
+  const left = makeTouchButton('◀', GAME_KEYS.ArrowLeft, emu);
+  const right = makeTouchButton('▶', GAME_KEYS.ArrowRight, emu);
+  up.style.gridArea = 'up';
+  down.style.gridArea = 'down';
+  left.style.gridArea = 'left';
+  right.style.gridArea = 'right';
+  dpad.append(up, down, left, right);
+
+  const fire = makeTouchButton('FIRE', GAME_KEYS.Space, emu);
+  fire.id = 'zxpen-fire';
+
+  overlay.append(dpad, fire);
+  document.body.append(overlay);
+}
+
+function makeTouchButton(
+  label: string,
+  [row, bit]: [number, number],
+  emu: Emu,
+): HTMLButtonElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'zxpen-touch-btn';
+  btn.textContent = label;
+  const setDown = (down: boolean) => (ev: PointerEvent) => {
+    ev.preventDefault();
+    emu.key(row, bit, down);
+  };
+  btn.addEventListener('pointerdown', setDown(true));
+  btn.addEventListener('pointerup', setDown(false));
+  btn.addEventListener('pointercancel', setDown(false));
+  btn.addEventListener('pointerleave', setDown(false));
+  return btn;
+}
+
+// --- Gamepad polling --------------------------------------------------------
+
+/** Call once per tick from main.ts's rAF loop. Reads pad 0 (if any) and
+ * feeds its axes/buttons through gamepad-logic.ts's edge-detected mapper,
+ * applying only the resulting state-change events to emu.key — a held
+ * direction/button is not resent every tick. */
+export function pollGamepad(emu: Emu): void {
+  const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+  const pad = pads[0];
+  if (!pad) return;
+  const axes = Array.from(pad.axes);
+  const buttons = Array.from(pad.buttons, (b) => b.pressed);
+  for (const { row, bit, down } of mapGamepadState(axes, buttons)) {
+    emu.key(row, bit, down);
+  }
+}

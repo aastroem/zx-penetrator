@@ -4,6 +4,7 @@ import { attachKeyboard } from './input';
 import { Beeper } from './audio';
 import { edgesToSamples } from './audio-math';
 import { Slots, attachHotkeys } from './state';
+import { initUi, pollGamepad } from './ui';
 
 const T_STATES_PER_SEC = 3_500_000;
 const FRAME_TSTATES = 69888; // Spectrum: T-states per 50Hz frame
@@ -28,6 +29,9 @@ scr.resize();
 const slots = new Slots(emu);
 attachHotkeys(slots);
 slots.autoSaveOnUnload();
+
+// --- Shell chrome: top bar, touch overlay, gamepad polling -----------------
+initUi({ emu, scr, slots });
 
 // --- Audio bring-up -------------------------------------------------------
 // Browsers require a user gesture before audio can play, so the
@@ -93,6 +97,7 @@ function step(owedTstates: number): void {
 let last = performance.now();
 
 function tick(now: number): void {
+  pollGamepad(emu);
   if (audioCtx && audioCtx.state === 'running' && beeper) {
     const rawOwed = (audioCtx.currentTime - audioT0) * T_STATES_PER_SEC - audioDone;
     if (rawOwed > T_STATES_PER_SEC) {

@@ -2,7 +2,53 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Penetrator — ZX Spectrum</title>
-<style>html,body{margin:0;background:#111;height:100%;display:grid;place-items:center}</style>
+<style>
+html,body{margin:0;background:#111;height:100%;display:grid;place-items:center}
+
+#zxpen-topbar{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  padding:6px 10px;background:rgba(17,17,17,.85);
+  color:#ddd;font:13px/1.4 system-ui,sans-serif;
+}
+#zxpen-topbar button{
+  background:#222;color:#ddd;border:1px solid #444;border-radius:4px;
+  padding:4px 8px;font:inherit;cursor:pointer;
+}
+#zxpen-topbar button:active{background:#333}
+#zxpen-topbar label{display:flex;align-items:center;gap:4px;cursor:pointer}
+#zxpen-keyshelp{color:#ddd}
+#zxpen-keyshelp summary{cursor:pointer}
+#zxpen-keyshelp p{margin:4px 0}
+
+#zxpen-touch{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding:16px;pointer-events:none;touch-action:none;
+}
+#zxpen-dpad{
+  pointer-events:auto;
+  display:grid;
+  grid-template-areas:". up ." "left . right" ". down .";
+  grid-template-columns:64px 64px 64px;
+  grid-template-rows:64px 64px 64px;
+  gap:4px;
+}
+.zxpen-touch-btn{
+  min-width:64px;min-height:64px;touch-action:none;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
+  color:#fff;font-size:22px;border-radius:8px;pointer-events:auto;
+  -webkit-user-select:none;user-select:none;
+}
+.zxpen-touch-btn:active{background:rgba(255,255,255,.3)}
+#zxpen-fire{
+  width:96px;height:96px;border-radius:50%;font-size:15px;font-weight:bold;
+  background:rgba(255,60,60,.25);border:2px solid rgba(255,255,255,.4);
+  color:#fff;pointer-events:auto;touch-action:none;
+  -webkit-user-select:none;user-select:none;
+}
+#zxpen-fire:active{background:rgba(255,60,60,.45)}
+</style>
 </head><body>
 <canvas id="screen"></canvas>
 <script type="module" src="/main.ts"></script>
