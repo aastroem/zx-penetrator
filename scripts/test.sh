@@ -18,3 +18,4 @@ else
 fi
 
 node test/shell-smoke.mjs
+node test/audio-smoke.mjs
