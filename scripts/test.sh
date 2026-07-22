@@ -16,3 +16,5 @@ if command -v emcc >/dev/null 2>&1; then
 else
   echo "emcc not found; skipping wasm smoke test"
 fi
+
+node test/shell-smoke.mjs
