@@ -89,11 +89,14 @@ try {
   const { pokeCredit, CREDIT_START_FRAME, CREDIT_END_FRAME } =
     await import(pathToFileURL(path.join(outDir, 'credit.js')).href);
 
-  // --- Reveal window: pinned to the empirically-verified values (logo ends
-  // ~1400 frames after "leave title"; game starts touching these rows again
-  // at ~2300+) so a drift here is caught rather than silently reintroducing
-  // a HUD collision or an always-late/never-shown credit. -------------------
-  assert(CREDIT_START_FRAME === 1400, `CREDIT_START_FRAME should be 1400, got ${CREDIT_START_FRAME}`);
+  // --- Reveal window: pinned to the empirically-verified values (rows
+  // 15-21 hold leftover title-picture content through frame ~1300, then go
+  // untouched by the game until ~2300+) so a drift here is caught rather
+  // than silently reintroducing a HUD/title collision or a never-shown
+  // credit. 1300, not 1400: the credit should appear *alongside* the tail
+  // of the still-visible logo/instructions text (rows 8-14), not after it's
+  // gone — see credit.ts's doc comment. -----------------------------------
+  assert(CREDIT_START_FRAME === 1300, `CREDIT_START_FRAME should be 1300, got ${CREDIT_START_FRAME}`);
   assert(CREDIT_END_FRAME === 2280, `CREDIT_END_FRAME should be 2280, got ${CREDIT_END_FRAME}`);
   assert(CREDIT_END_FRAME > CREDIT_START_FRAME, 'reveal window must be non-empty');
 
@@ -104,24 +107,30 @@ try {
 
   assert(pokes.size > 0, 'pokeCredit wrote at least one byte');
 
-  // Recompute the expected bitmap bytes for a line the same way credit.ts's
-  // renderLineCells does (checkerboard in, byte-packed out), independently
-  // of credit.ts's own implementation.
-  function expectedCellByte(pr, col) {
+  // Recompute the expected bitmap bytes the same way credit.ts's
+  // renderLineCells does: a `cols`-char, 8px-tall checkerboard source,
+  // nearest-neighbor-upscaled by SCALE, independently of credit.ts's own
+  // implementation.
+  const SCALE = 2;
+  function expectedCellByte(oy, ocol) {
+    const sy = Math.floor(oy / SCALE);
     let byte = 0;
     for (let bit = 0; bit < 8; bit++) {
-      const x = col * 8 + bit;
-      if (checkerboardValue(x, pr) > 128) byte |= 1 << (7 - bit);
+      const ox = ocol * 8 + bit;
+      const sx = Math.floor(ox / SCALE);
+      if (checkerboardValue(sx, sy) > 128) byte |= 1 << (7 - bit);
     }
     return byte;
   }
 
   function checkLine(charRow, text) {
     const cols = text.length;
-    const startCol = Math.floor((32 - cols) / 2);
-    for (let pr = 0; pr < 8; pr++) {
+    const outCols = cols * SCALE;
+    const outRows = 8 * SCALE;
+    const startCol = Math.floor((32 - outCols) / 2);
+    for (let pr = 0; pr < outRows; pr++) {
       const addr = 0x4000 + rowAddr(charRow * 8 + pr);
-      for (let col = 0; col < cols; col++) {
+      for (let col = 0; col < outCols; col++) {
         const got = pokes.get(addr + startCol + col);
         const want = expectedCellByte(pr, col);
         assert(
@@ -131,10 +140,12 @@ try {
         );
       }
     }
-    const attrAddr = 0x5800 + charRow * 32 + startCol;
-    for (let col = 0; col < cols; col++) {
-      const got = pokes.get(attrAddr + col);
-      assert(got === 0b01000111, `row ${charRow} attr col ${col}: expected bright-white-on-black (0x47), got ${got}`);
+    for (let r = 0; r < SCALE; r++) {
+      const attrAddr = 0x5800 + (charRow + r) * 32 + startCol;
+      for (let col = 0; col < outCols; col++) {
+        const got = pokes.get(attrAddr + col);
+        assert(got === 0b01000111, `row ${charRow + r} attr col ${col}: expected bright-white-on-black (0x47), got ${got}`);
+      }
     }
     // Every address touched must fall inside real screen memory ($4000-$5AFF).
     for (const addr of pokes.keys()) {
@@ -142,17 +153,18 @@ try {
     }
   }
 
-  // Rows 17/19: chosen because they're the ones verified (by a live scan
-  // against the real game's own screen writes, see credit.ts's doc comment)
-  // to stay untouched by the game from logo-end through well past the
-  // reveal window's end — never rows 22/23, which the score-panel HUD
-  // claims once the attract demo starts.
-  checkLine(17, 'A KIM & KENNY SHOW');
-  checkLine(19, 'PRODUCTION - 2026');
+  // Rows 16-17 / 19-20 (SCALE=2, so each line spans 2 character rows):
+  // chosen because they're the ones verified (by a live scan against the
+  // real game's own screen writes, see credit.ts's doc comment) to stay
+  // untouched by the game across the whole reveal window — never rows
+  // 22/23, which the score-panel HUD claims once the attract demo starts.
+  checkLine(16, 'KIM & KENNY SHOW');
+  checkLine(19, 'PRODUCTION 2026');
 
-  // Both lines fit within the 32-column screen width.
-  assert('A KIM & KENNY SHOW'.length <= 32, 'line 1 fits in 32 columns');
-  assert('PRODUCTION - 2026'.length <= 32, 'line 2 fits in 32 columns');
+  // Both lines fit within the 32-column screen width at SCALE=2 (16 chars
+  // is the hard max: 16*8*2 = 256px = the full screen width exactly).
+  assert('KIM & KENNY SHOW'.length * SCALE <= 32, 'line 1 fits in 32 columns at SCALE=2');
+  assert('PRODUCTION 2026'.length * SCALE <= 32, 'line 2 fits in 32 columns at SCALE=2');
 
   if (ok) console.log('credit-smoke: in-screen credit bitmap/attr addressing + reveal window MATCH');
 } finally {
