@@ -3,13 +3,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Penetrator — ZX Spectrum</title>
 <style>
-html,body{margin:0;background:#111;height:100%;display:grid;place-items:center}
+html,body{margin:0;background:#111;height:100%}
+body{display:flex;flex-direction:column}
 
 #zxpen-topbar{
-  position:fixed;top:0;left:0;right:0;z-index:20;
+  flex:0 0 auto;z-index:20;
   display:flex;flex-wrap:wrap;align-items:center;gap:10px;
   padding:6px 10px;background:rgba(17,17,17,.85);
   color:#ddd;font:13px/1.4 system-ui,sans-serif;
+}
+
+#zxpen-screen-wrap{
+  flex:1 1 auto;min-height:0;min-width:0;
+  display:grid;place-items:center;overflow:hidden;
 }
 #zxpen-topbar button{
   background:#222;color:#ddd;border:1px solid #444;border-radius:4px;
@@ -50,6 +56,6 @@ html,body{margin:0;background:#111;height:100%;display:grid;place-items:center}
 #zxpen-fire:active{background:rgba(255,60,60,.45)}
 </style>
 </head><body>
-<canvas id="screen"></canvas>
+<div id="zxpen-screen-wrap"><canvas id="screen"></canvas></div>
 <script type="module" src="/main.ts"></script>
 </body></html>

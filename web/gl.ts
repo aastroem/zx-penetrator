@@ -42,10 +42,19 @@ export class Screen {
     this.crtOn = on;
   }
 
+  /** Sizes the canvas (integer-scaled 352x288) to fit the AVAILABLE box of
+   * its parent container, not the raw window — the topbar sits in-flow
+   * above it (see index.html), so on narrow/landscape-phone viewports the
+   * container is already shrunk by the bar's real height and this can't
+   * overlap it. Falls back to window dimensions if the canvas has somehow
+   * been detached from a parent. */
   resize(): void {
+    const parent = this.canvas.parentElement;
+    const availW = parent ? parent.clientWidth : window.innerWidth;
+    const availH = parent ? parent.clientHeight : window.innerHeight;
     const k = Math.max(
       1,
-      Math.floor(Math.min(window.innerWidth / 352, window.innerHeight / 288)),
+      Math.floor(Math.min(availW / 352, availH / 288)),
     );
     const w = 352 * k;
     const h = 288 * k;

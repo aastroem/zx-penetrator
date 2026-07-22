@@ -171,6 +171,40 @@ try {
     assert(JSON.stringify(got) === JSON.stringify(want), 'mapGamepadState: left+down events carry correct row/bit/down');
   }
 
+  // --- (f) Simulates ui.ts's pollGamepad on gamepad disconnect mid-hold: a
+  // held direction/button followed by a neutral-input poll (mapGamepadState
+  // fed neutral axes/all-false buttons, as pollGamepad now does instead of
+  // early-returning when the pad vanishes) emits the release exactly once;
+  // a further neutral poll (pad still gone) emits nothing more -------------
+  {
+    resetGamepadState();
+
+    // Hold fire (a button, not an axis, to exercise a different edge than
+    // the dpad-heavy case (e) above).
+    const fireButtons = NEUTRAL_BUTTONS.slice();
+    fireButtons[0] = true;
+    let events = mapGamepadState(NEUTRAL_AXES, fireButtons);
+    assert(
+      events.length === 1 && events[0].down === true &&
+        events[0].row === PAD_FIRE[0] && events[0].bit === PAD_FIRE[1],
+      'disconnect-sim: holding fire emits exactly one fire-down event',
+    );
+
+    // Pad "disconnects" mid-hold: pollGamepad now feeds a neutral-input call
+    // instead of returning early.
+    events = mapGamepadState(NEUTRAL_AXES, NEUTRAL_BUTTONS);
+    assert(
+      events.length === 1 && events[0].down === false &&
+        events[0].row === PAD_FIRE[0] && events[0].bit === PAD_FIRE[1],
+      'disconnect-sim: neutral-input call after disconnect emits exactly the fire-release event',
+    );
+
+    // Second neutral call (pad still gone) -> zero events (prevState is
+    // already neutral).
+    events = mapGamepadState(NEUTRAL_AXES, NEUTRAL_BUTTONS);
+    assert(events.length === 0, 'disconnect-sim: second neutral call after disconnect emits zero events');
+  }
+
   if (ok) console.log('ui-smoke: gamepad-logic axis thresholds + edge-detection MATCH');
 } finally {
   rmSync(outDir, { recursive: true, force: true });

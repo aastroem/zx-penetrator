@@ -15,9 +15,18 @@ const SAMPLE_RATE_RATIO = SAMPLE_RATE / T_STATES_PER_SEC;
 const emu = await Emu.create();
 emu.boot();
 
-const scr = new Screen(document.getElementById('screen') as HTMLCanvasElement);
+const screenCanvas = document.getElementById('screen') as HTMLCanvasElement;
+const scr = new Screen(screenCanvas);
 attachKeyboard(emu);
+// Window resize is cheap belt-and-braces; the ResizeObserver below is what
+// actually tracks the canvas's available box (its container shrinks when
+// the in-flow topbar wraps to more lines, e.g. the keys-help <details>
+// expanding), independent of whether the window itself changed size.
 addEventListener('resize', () => scr.resize());
+const screenWrap = screenCanvas.parentElement;
+if (screenWrap && typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => scr.resize()).observe(screenWrap);
+}
 scr.resize();
 
 // --- Save states + landscape editor persistence ---------------------------

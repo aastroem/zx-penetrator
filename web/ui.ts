@@ -104,7 +104,10 @@ function buildTopBar({ emu, scr, slots }: UiDeps): void {
   details.append(body);
   bar.append(details);
 
-  document.body.append(bar);
+  // Prepended (not appended) so it lands before #zxpen-screen-wrap in DOM
+  // order — body is a column flex layout now (see index.html), and flex
+  // items stack in DOM order by default.
+  document.body.prepend(bar);
 }
 
 // --- Touch overlay: only on coarse (touch) pointers -----------------------
@@ -156,16 +159,32 @@ function makeTouchButton(
 
 // --- Gamepad polling --------------------------------------------------------
 
+// Tracks whether the previous poll saw a pad, purely to skip redundant work
+// once a disconnect has already been fed through as a neutral poll (see
+// below) — mapGamepadState's own edge-detection already makes a second
+// neutral poll a no-op, this just avoids reallocating the neutral arrays and
+// calling into it at all.
+let padWasPresent = false;
+
 /** Call once per tick from main.ts's rAF loop. Reads pad 0 (if any) and
  * feeds its axes/buttons through gamepad-logic.ts's edge-detected mapper,
  * applying only the resulting state-change events to emu.key — a held
- * direction/button is not resent every tick. */
+ * direction/button is not resent every tick.
+ *
+ * When no pad is present (never connected, or disconnected mid-hold), this
+ * feeds mapGamepadState neutral axes/all-false buttons instead of early-
+ * returning: a direction/button held at disconnect time then sees its
+ * down-state flip to false exactly once via the normal edge-detected diff,
+ * so it can't get stuck latched in the key matrix forever. Once a neutral
+ * poll has been fed through, further polls with still no pad are skipped
+ * (prevState is already neutral, so they'd produce zero events anyway). */
 export function pollGamepad(emu: Emu): void {
   const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
   const pad = pads[0];
-  if (!pad) return;
-  const axes = Array.from(pad.axes);
-  const buttons = Array.from(pad.buttons, (b) => b.pressed);
+  if (!pad && !padWasPresent) return;
+  padWasPresent = !!pad;
+  const axes = pad ? Array.from(pad.axes) : [0, 0];
+  const buttons = pad ? Array.from(pad.buttons, (b) => b.pressed) : [];
   for (const { row, bit, down } of mapGamepadState(axes, buttons)) {
     emu.key(row, bit, down);
   }
