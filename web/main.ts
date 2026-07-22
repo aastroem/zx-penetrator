@@ -150,14 +150,17 @@ async function main(): Promise<void> {
       if (beeper) beeper.push(samples);
       if (audioCtx) audioDone += ran;
     }
-    // Poke the credit once we're inside its reveal window (see credit.ts) —
-    // a single poke suffices for the whole window, since the game itself
-    // never touches those screen rows again until well after it ends.
-    if (!creditPoked && creditFrame0 !== null) {
+    // Re-poke the credit every tick while inside its reveal window (see
+    // credit.ts): the game does a full screen clear during the logo→menu
+    // transition (~frame 1400 after the title keypress), so a one-shot poke
+    // at 1300 would be erased two seconds in. Idempotent display-memory
+    // writes; once the window ends the game's own next clear removes it.
+    if (creditFrame0 !== null && !creditPoked) {
       const elapsed = emu.frame() - creditFrame0;
       if (elapsed >= CREDIT_START_FRAME && elapsed <= CREDIT_END_FRAME) {
         pokeCredit(emu);
-        creditPoked = true;
+      } else if (elapsed > CREDIT_END_FRAME) {
+        creditPoked = true; // window over — stop checking for good
       }
     }
     scr.draw(emu.screen(), emu.border(), emu.frame());
