@@ -5,7 +5,6 @@ import { Beeper } from './audio';
 import { edgesToSamples } from './audio-math';
 import { Slots, attachHotkeys } from './state';
 import { initUi, pollGamepad } from './ui';
-import { pokeCredit, CREDIT_START_FRAME, CREDIT_END_FRAME } from './credit';
 
 const T_STATES_PER_SEC = 3_500_000;
 const FRAME_TSTATES = 69888; // Spectrum: T-states per 50Hz frame
@@ -101,17 +100,7 @@ async function main(): Promise<void> {
   // audio-math.ts for why this can't be derived tick-locally.
   let speakerLevel: 0 | 1 = 0;
 
-  // "A Kim & Kenny Show production" credit (see credit.ts): baked straight
-  // into the emulated screen's own memory, timed off the emulator's own
-  // frame counter relative to the same first-gesture moment that starts
-  // audio below (used here as a proxy for "the player just left the title
-  // screen" — same heuristic, same gesture). credit.ts's frame window was
-  // verified empirically against the real game's own screen writes.
-  let creditFrame0: number | null = null; // emu.frame() at first gesture
-  let creditPoked = false; // poke once per boot, on entering the window
-
   function startAudio(): void {
-    if (creditFrame0 === null) creditFrame0 = emu.frame();
     if (audioCtx) return; // already starting/started
     const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
     audioCtx = ctx;
@@ -149,19 +138,6 @@ async function main(): Promise<void> {
       speakerLevel = endLevel;
       if (beeper) beeper.push(samples);
       if (audioCtx) audioDone += ran;
-    }
-    // Re-poke the credit every tick while inside its reveal window (see
-    // credit.ts): the game does a full screen clear during the logo→menu
-    // transition (~frame 1400 after the title keypress), so a one-shot poke
-    // at 1300 would be erased two seconds in. Idempotent display-memory
-    // writes; once the window ends the game's own next clear removes it.
-    if (creditFrame0 !== null && !creditPoked) {
-      const elapsed = emu.frame() - creditFrame0;
-      if (elapsed >= CREDIT_START_FRAME && elapsed <= CREDIT_END_FRAME) {
-        pokeCredit(emu);
-      } else if (elapsed > CREDIT_END_FRAME) {
-        creditPoked = true; // window over — stop checking for good
-      }
     }
     scr.draw(emu.screen(), emu.border(), emu.frame());
   }
