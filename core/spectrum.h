@@ -19,6 +19,7 @@ typedef struct {
 void spec_init(Spectrum *s);
 void spec_key(Spectrum *s, int row, int bit, int down);
 void spec_run_frame(Spectrum *s);      /* 69888 ts then IRQ */
+void spec_repatch_io(Spectrum *s);     /* re-install inp/outp hooks (post state-load) */
 
 /* penetrator.c — also the WASM export surface */
 void     pen_boot(void);

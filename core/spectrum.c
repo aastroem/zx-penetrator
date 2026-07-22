@@ -37,6 +37,10 @@ void spec_key(Spectrum *s, int row, int bit, int down) {
     if (down) s->keys[row] |= 1 << bit; else s->keys[row] &= ~(1 << bit);
 }
 
+void spec_repatch_io(Spectrum *s) {
+    s->cpu.inp = spec_inp; s->cpu.outp = spec_outp;
+}
+
 void spec_run_frame(Spectrum *s) {
     uint64_t end = s->cpu.ts + TS_FRAME;
     s->frame_start_ts = s->cpu.ts;
