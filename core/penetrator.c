@@ -3,7 +3,6 @@
 #include "game_data.h"
 
 #define USED __attribute__((used))
-#define TS_FRAME 69888
 
 static Spectrum S;
 
