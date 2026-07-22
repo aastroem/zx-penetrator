@@ -100,7 +100,18 @@ async function main(): Promise<void> {
   // audio-math.ts for why this can't be derived tick-locally.
   let speakerLevel: 0 | 1 = 0;
 
+  // Web-presentation-only credit (index.html's #zxpen-credit; never baked
+  // into the emulated screen). Faded out on the same first user gesture that
+  // starts audio, then removed once the CSS transition finishes.
+  function fadeOutCredit(): void {
+    const el = document.getElementById('zxpen-credit');
+    if (!el) return; // already removed by an earlier gesture
+    el.classList.add('zxpen-credit-hide');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+  }
+
   function startAudio(): void {
+    fadeOutCredit();
     if (audioCtx) return; // already starting/started
     const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
     audioCtx = ctx;

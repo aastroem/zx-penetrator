@@ -1,5 +1,7 @@
 # zx-penetrator
 
+*A Kim & Kenny Show production*
+
 **[Play it in your browser →](https://aastroem.github.io/zx-penetrator/)**
 
 A pixel-perfect port of *Penetrator* (ZX Spectrum 48K, Beam Software, 1982,
@@ -18,11 +20,11 @@ engineered into a rewrite — the machine just runs the original 1982 code.
 
 | Action              | Keyboard         | Touch / Gamepad         |
 |---------------------|------------------|--------------------------|
-| Number of players   | `1` / `2`        | —                        |
-| Training center     | `T`              | —                        |
-| Landscape editor    | `E`              | —                        |
-| Load landscape      | `L`              | —                        |
-| Toggle sirens       | `S`              | —                        |
+| Number of players   | `1` / `2`        | menu strip, 1 / 2        |
+| Training center     | `T`              | menu strip, T            |
+| Landscape editor    | `E`              | menu strip, E            |
+| Load landscape      | `L`              | menu strip, L            |
+| Toggle sirens       | `S`              | menu strip, S            |
 | Climb               | `Q` / `↑`        | left cluster, up         |
 | Dive                | `A` / `↓`        | left cluster, down       |
 | Slower              | `O` / `←`        | left cluster, left       |

@@ -22,3 +22,4 @@ node test/audio-smoke.mjs
 node test/state-smoke.mjs
 node test/ui-smoke.mjs
 node test/input-smoke.mjs
+node test/touch-menu-smoke.mjs

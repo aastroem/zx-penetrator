@@ -114,6 +114,18 @@ function buildTopBar({ emu, scr, slots }: UiDeps): void {
 
 // --- Touch overlay: only on coarse (touch) pointers -----------------------
 
+// Menu-strip buttons: label -> matrix target, derived from GAME_KEYS (not
+// hand-written) so this can never drift from input.ts's ROWS table. Digit1/
+// Digit2 = number-of-players, the rest are the menu-mode letter commands.
+const MENU_STRIP_KEYS: readonly [string, [number, number]][] = [
+  ['1', GAME_KEYS.Digit1],
+  ['2', GAME_KEYS.Digit2],
+  ['T', GAME_KEYS.KeyT],
+  ['E', GAME_KEYS.KeyE],
+  ['L', GAME_KEYS.KeyL],
+  ['S', GAME_KEYS.KeyS],
+];
+
 function buildTouchOverlay(emu: Emu): void {
   if (!matchMedia('(pointer: coarse)').matches) return;
 
@@ -137,6 +149,35 @@ function buildTouchOverlay(emu: Emu): void {
 
   overlay.append(dpad, fire);
   document.body.append(overlay);
+
+  buildMenuStrip(emu);
+}
+
+// A separate fixed-position strip (not part of #zxpen-touch, which is
+// bottom-anchored) so it can be pinned to the top of the fixed overlay
+// layer without colliding with the in-flow #zxpen-topbar above it. The
+// topbar's height varies (its keys-help <details> can expand), so the strip
+// tracks the topbar's actual bottom edge via ResizeObserver + resize rather
+// than a hardcoded offset.
+function buildMenuStrip(emu: Emu): void {
+  const strip = document.createElement('div');
+  strip.id = 'zxpen-menustrip';
+  for (const [label, target] of MENU_STRIP_KEYS) {
+    const btn = makeTouchButton(label, target, emu);
+    btn.classList.add('zxpen-menu-btn');
+    strip.append(btn);
+  }
+  document.body.append(strip);
+
+  const bar = document.getElementById('zxpen-topbar');
+  const reposition = () => {
+    strip.style.top = `${bar ? bar.getBoundingClientRect().bottom : 0}px`;
+  };
+  reposition();
+  addEventListener('resize', reposition);
+  if (bar && typeof ResizeObserver === 'function') {
+    new ResizeObserver(reposition).observe(bar);
+  }
 }
 
 function makeTouchButton(
