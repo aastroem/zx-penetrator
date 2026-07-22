@@ -3,4 +3,5 @@ dist/
 core/build/
 web/public/pen.wasm
 test/out/
+__pycache__/
 .DS_Store

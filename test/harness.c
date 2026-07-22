@@ -21,6 +21,64 @@ int main(int argc, char **argv) {
         printf("%08x\n", pen_hash());
         return 0;
     }
+    if (argc >= 3 && !strcmp(argv[1], "timeline")) {
+        FILE *fp = fopen(argv[2], "rb");
+        if (!fp) { fprintf(stderr, "timeline: cannot open %s\n", argv[2]); return 2; }
+        fseek(fp, 0, SEEK_END);
+        long len = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        char *buf = malloc((size_t)len + 1);
+        if (!buf) { fprintf(stderr, "timeline: alloc failed\n"); fclose(fp); return 2; }
+        size_t rd = fread(buf, 1, (size_t)len, fp);
+        buf[rd] = '\0';
+        fclose(fp);
+
+        long total_frames = 0;
+        char *p = strstr(buf, "\"frames\":");
+        if (p) total_frames = strtol(p + strlen("\"frames\":"), NULL, 10);
+
+        /* Parse events in file order: each has frame/row/bit/down keys. */
+        #define MAX_EV 4096
+        static long ev_frame[MAX_EV];
+        static int ev_row[MAX_EV], ev_bit[MAX_EV], ev_down[MAX_EV];
+        int nev = 0;
+        p = strstr(buf, "\"events\":");
+        if (p) {
+            char *cur = p;
+            for (;;) {
+                char *f = strstr(cur, "\"frame\":");
+                if (!f) break;
+                long frame = strtol(f + strlen("\"frame\":"), NULL, 10);
+                char *r = strstr(f, "\"row\":");
+                if (!r) break;
+                int row = (int)strtol(r + strlen("\"row\":"), NULL, 10);
+                char *b = strstr(r, "\"bit\":");
+                if (!b) break;
+                int bit = (int)strtol(b + strlen("\"bit\":"), NULL, 10);
+                char *d = strstr(b, "\"down\":");
+                if (!d) break;
+                char *dv = d + strlen("\"down\":");
+                while (*dv == ' ') dv++;
+                int down = strncmp(dv, "true", 4) == 0;
+                if (nev >= MAX_EV) { fprintf(stderr, "timeline: too many events\n"); return 2; }
+                ev_frame[nev] = frame; ev_row[nev] = row; ev_bit[nev] = bit; ev_down[nev] = down;
+                nev++;
+                cur = d + strlen("\"down\":");
+            }
+        }
+        free(buf);
+
+        int ei = 0;
+        for (long f = 0; f < total_frames; f++) {
+            while (ei < nev && ev_frame[ei] == f) {
+                pen_key(ev_row[ei], ev_bit[ei], ev_down[ei]);
+                ei++;
+            }
+            pen_run_frames(1);
+            printf("%08x\n", pen_hash());
+        }
+        return 0;
+    }
     if (argc >= 2 && !strcmp(argv[1], "statechk")) {
         // Reference: 100 frames, then hold Space and run 50 more frames
         pen_run_frames(100);
