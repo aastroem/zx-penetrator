@@ -30,6 +30,12 @@ let audioCtx: AudioContext | null = null;
 let audioT0 = 0; // ctx.currentTime when audio-clock scheduling took over
 let audioDone = 0; // tstates executed since audioT0
 
+// Speaker level carried across ticks so edgesToSamples() can render each
+// tick's audio relative to what the speaker was actually doing, rather than
+// guessing from that tick's own (possibly level-repeating) log entries. See
+// audio-math.ts for why this can't be derived tick-locally.
+let speakerLevel: 0 | 1 = 0;
+
 function startAudio(): void {
   if (audioCtx) return; // already starting/started
   const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
@@ -52,7 +58,15 @@ function step(owedTstates: number): void {
   if (owed > 0) {
     const ran = emu.run(owed);
     const { ts, lv } = emu.drainAudio();
-    if (beeper) beeper.push(edgesToSamples(ts, lv, ran, SAMPLE_RATE_RATIO));
+    // Always synthesize (even though Beeper.push() may go on to drop the
+    // chunk when it's too far ahead of real-time playback): speakerLevel
+    // must advance in lockstep with the emulator's run, or the next tick's
+    // rendering would desync from what the speaker actually did during a
+    // dropped chunk. The synthesis cost of an occasional dropped chunk is
+    // the price of keeping level tracking exact.
+    const { samples, endLevel } = edgesToSamples(ts, lv, ran, SAMPLE_RATE_RATIO, speakerLevel);
+    speakerLevel = endLevel;
+    if (beeper) beeper.push(samples);
     if (audioCtx) audioDone += ran;
   }
   scr.draw(emu.screen(), emu.border(), emu.frame());

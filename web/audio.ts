@@ -47,6 +47,9 @@ export class Beeper {
     if (ahead > MAX_AHEAD_SAMPLES) return;
 
     this.pushedSamples += chunk.length;
-    this.node.port.postMessage(chunk);
+    // Transfer the underlying buffer instead of structured-cloning it: the
+    // Float32Array isn't reused after this push, so handing ownership to
+    // the worklet thread avoids a copy on every chunk.
+    this.node.port.postMessage(chunk, [chunk.buffer]);
   }
 }
